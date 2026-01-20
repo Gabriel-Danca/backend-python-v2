@@ -2,9 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from app.db.session import SessionLocal, engine
-from app.models import Task  
-from app import schemas      
+from app.db.session import SessionLocal
+from app.models import Task
+from app import schemas
 
 app = FastAPI(title="Python Backend")
 
@@ -15,26 +15,15 @@ def get_db():
     finally:
         db.close()
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-@app.get("/db-check")
-def db_check(db: Session = Depends(get_db)):
-    try:
-        db.execute(select(1))
-        return {"db": 1}
-    except Exception as e:
-        return {"db": 0, "error": str(e)}
-
-
 @app.post("/tasks/", response_model=schemas.TaskResponse, status_code=status.HTTP_201_CREATED)
-def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
-    new_task = Task(name=task.name)
-    
+def create_task(task_data: schemas.TaskCreate, db: Session = Depends(get_db)):
+    new_task = Task(
+        task=task_data.task,
+        is_completed=task_data.is_completed,
+        is_deactivated=task_data.is_deactivated
+    )
     db.add(new_task)
     db.commit()
-
     db.refresh(new_task)
     return new_task
 
@@ -47,28 +36,42 @@ def read_tasks(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 @app.get("/tasks/{task_id}", response_model=schemas.TaskResponse)
 def read_task(task_id: int, db: Session = Depends(get_db)):
     task = db.get(Task, task_id)
-    if task is None:
+    if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
 
 @app.put("/tasks/{task_id}", response_model=schemas.TaskResponse)
 def update_task(task_id: int, task_update: schemas.TaskCreate, db: Session = Depends(get_db)):
-    task = db.get(Task, task_id)
-    if task is None:
+    db_task = db.get(Task, task_id)
+    if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    task.name = task_update.name
+    db_task.task = task_update.task
+    db_task.is_completed = task_update.is_completed
+    db_task.is_deactivated = task_update.is_deactivated
     
     db.commit()
-    db.refresh(task)
-    return task
+    db.refresh(db_task)
+    return db_task
 
 @app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(task_id: int, db: Session = Depends(get_db)):
-    task = db.get(Task, task_id)
-    if task is None:
+    db_task = db.get(Task, task_id)
+    if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    db.delete(task)
+    db.delete(db_task)
     db.commit()
     return None
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+@app.get("/db-check")
+def db_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(select(1))
+        return {"db": 1}
+    except Exception as e:
+        return {"db": 0, "error": str(e)}
