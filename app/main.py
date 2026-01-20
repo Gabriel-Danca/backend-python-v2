@@ -57,7 +57,6 @@ def update_task(task_id: int, task_update: schemas.TaskCreate, db: Session = Dep
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     
-
     task.name = task_update.name
     
     db.commit()
