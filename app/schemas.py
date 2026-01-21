@@ -1,25 +1,14 @@
-from pydantic import BaseModel, ConfigDict, Field, computed_field
-from datetime import datetime
+from pydantic import BaseModel, Field, ConfigDict
 
-class TaskCreateRequest(BaseModel):
-    task: str
+class TaskBase(BaseModel):
+    task: str = Field(..., max_length=500, min_length=0, description="Task description")
     is_completed: bool = False
     is_deactivated: bool = False
 
-class TaskResponse(BaseModel):
+class TaskCreateRequest(TaskBase):
+    pass
+
+class TaskResponse(TaskBase):
     id: int
-    task: str
-    is_completed: bool
-    is_deactivated: bool
-    created_at: datetime
-    updated_at: datetime
-
-    @computed_field
-    def completed(self) -> bool:
-        return self.is_completed
-
-    @computed_field
-    def deactivated(self) -> bool:
-        return self.is_deactivated
 
     model_config = ConfigDict(from_attributes=True)

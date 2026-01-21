@@ -1,3 +1,5 @@
+import sys
+import logging
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -5,17 +7,15 @@ from sqlalchemy import select
 from app.db.session import SessionLocal
 from app.models import Task
 from app import schemas
-import logging
-import sys
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)]
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app")
 
-app = FastAPI(title="Python Backend", version="1.0")
+app = FastAPI(title="Python backend")
 
 def get_db():
     db = SessionLocal()
@@ -24,7 +24,29 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/api/tasks", response_model=schemas.TaskResponse, tags=["task-controller"], summary="Create task")
+@app.get(
+    "/api/tasks", 
+    response_model=list[schemas.TaskResponse], 
+    tags=["task-controller"], 
+    summary="List active tasks",
+    operation_id="getActive",
+    description="Returns tasks that are not deactivated"
+)
+def get_active_tasks(db: Session = Depends(get_db)):
+    logger.info("Reading active tasks list")
+    stmt = select(Task).where(Task.is_deactivated == False)
+    tasks = db.execute(stmt).scalars().all()
+    return tasks
+
+
+@app.post(
+    "/api/tasks", 
+    response_model=schemas.TaskResponse, 
+    tags=["task-controller"], 
+    summary="Create task",
+    operation_id="create",
+    description="Creates a new task"
+)
 def create_task(task_data: schemas.TaskCreateRequest, db: Session = Depends(get_db)):
     logger.info(f"Creating new task: {task_data.task}")
     
@@ -40,14 +62,15 @@ def create_task(task_data: schemas.TaskCreateRequest, db: Session = Depends(get_
     logger.info(f"Task created with ID: {new_task.id}")
     return new_task
 
-@app.get("/api/tasks", response_model=list[schemas.TaskResponse], tags=["task-controller"], summary="List active tasks")
-def get_active_tasks(db: Session = Depends(get_db)):
-    logger.info("Reading active tasks list")
-    stmt = select(Task).where(Task.is_deactivated == False)
-    tasks = db.execute(stmt).scalars().all()
-    return tasks
 
-@app.patch("/api/tasks/{id}/complete", response_model=schemas.TaskResponse, tags=["task-controller"], summary="Mark task completed")
+@app.patch(
+    "/api/tasks/{id}/complete", 
+    response_model=schemas.TaskResponse, 
+    tags=["task-controller"], 
+    summary="Mark task completed",
+    operation_id="markCompleted",
+    description="Marks the task as completed"
+)
 def mark_completed(id: int, db: Session = Depends(get_db)):
     logger.info(f"Request to mark task {id} as completed")
     
@@ -63,12 +86,20 @@ def mark_completed(id: int, db: Session = Depends(get_db)):
     return db_task
 
 
-@app.delete("/api/tasks/{id}", response_model=schemas.TaskResponse, tags=["task-controller"], summary="Deactivate task")
+@app.delete(
+    "/api/tasks/{id}", 
+    response_model=schemas.TaskResponse, 
+    tags=["task-controller"], 
+    summary="Deactivate task",
+    operation_id="deactivate",
+    description="Soft-deletes the task"
+)
 def deactivate_task(id: int, db: Session = Depends(get_db)):
     logger.info(f"Request to deactivate task {id}")
     
     db_task = db.get(Task, id)
     if not db_task:
+        logger.warning(f"Task {id} not found")
         raise HTTPException(status_code=404, detail="Task not found")
     
     db_task.is_deactivated = True
@@ -77,13 +108,23 @@ def deactivate_task(id: int, db: Session = Depends(get_db)):
     
     return db_task
 
-
-@app.get("/health", tags=["health-controller"], summary="Application health check")
+@app.get(
+    "/health", 
+    tags=["health-controller"], 
+    summary="Application health check",
+    operation_id="health"
+)
 def health():
     logger.debug("Health check probe received")
     return {"status": "ok"}
 
-@app.get("/db-check", tags=["health-controller"], summary="Database Connection Check")
+
+@app.get(
+    "/db-check", 
+    tags=["health-controller"], 
+    summary="Database Connection Check",
+    operation_id="dbCheck"
+)
 def db_check(db: Session = Depends(get_db)):
     try:
         db.execute(select(1))

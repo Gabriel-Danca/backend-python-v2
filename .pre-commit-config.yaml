@@ -1,0 +1,13 @@
+repos:
+  - repo: https://github.com/jackdewinter/pymarkdown
+    rev: v0.9.34          
+    hooks:
+      - id: pymarkdown
+        args: ["-d", "MD013,MD041", "scan"]
+        files: \.(md|MD)$
+  
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        args: ["--fix"]
