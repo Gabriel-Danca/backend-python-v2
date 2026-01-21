@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Gabriel Danca <gabriel.danca@endava.com>"]
 readme = "README.md"
+packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -17,6 +18,7 @@ pydantic-settings = "^2.12.0"
 python-dotenv = "^1.2.1"
 pytest = "^9.0.2"
 httpx = "^0.28.1"
+pyyaml = "^6.0.3"
 
 
 [build-system]

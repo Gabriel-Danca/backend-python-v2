@@ -40,9 +40,9 @@ poetry run alembic upgrade head
 To run the server, use the following:
 
 ```bash
-poetry run uvicorn app.main:app 
+
+poetry run gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 127.0.0.1:8000 app.main:app
 ```
-<!-- poetry run gunicorn -k uvicorn.workers.UvicornWorker -w 1 -b 127.0.0.1:8000 app.main:app -->
 
 Test the endpoints:
 

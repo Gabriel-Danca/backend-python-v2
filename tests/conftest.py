@@ -4,10 +4,10 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from app.main import app, get_db
 from app.db.base import Base
+from app.core.config import settings
 
-SQLALCHEMY_DATABASE_URL = "postgresql+psycopg://user:pass98@localhost:5432/appdb"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(settings.database_url)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @pytest.fixture(scope="module")

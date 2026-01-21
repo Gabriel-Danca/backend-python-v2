@@ -5,8 +5,17 @@ from sqlalchemy import select
 from app.db.session import SessionLocal
 from app.models import Task
 from app import schemas
+import logging
+import sys
 
-app = FastAPI(title="Python Backend")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="Python Backend", version="1.0")
 
 def get_db():
     db = SessionLocal()
@@ -15,8 +24,10 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/tasks/", response_model=schemas.TaskResponse, status_code=status.HTTP_201_CREATED)
-def create_task(task_data: schemas.TaskCreate, db: Session = Depends(get_db)):
+@app.post("/api/tasks", response_model=schemas.TaskResponse, tags=["task-controller"], summary="Create task")
+def create_task(task_data: schemas.TaskCreateRequest, db: Session = Depends(get_db)):
+    logger.info(f"Creating new task: {task_data.task}")
+    
     new_task = Task(
         task=task_data.task,
         is_completed=task_data.is_completed,
@@ -25,53 +36,61 @@ def create_task(task_data: schemas.TaskCreate, db: Session = Depends(get_db)):
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
+    
+    logger.info(f"Task created with ID: {new_task.id}")
     return new_task
 
-@app.get("/tasks/", response_model=list[schemas.TaskResponse])
-def read_tasks(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    stmt = select(Task).offset(skip).limit(limit)
+@app.get("/api/tasks", response_model=list[schemas.TaskResponse], tags=["task-controller"], summary="List active tasks")
+def get_active_tasks(db: Session = Depends(get_db)):
+    logger.info("Reading active tasks list")
+    stmt = select(Task).where(Task.is_deactivated == False)
     tasks = db.execute(stmt).scalars().all()
     return tasks
 
-@app.get("/tasks/{task_id}", response_model=schemas.TaskResponse)
-def read_task(task_id: int, db: Session = Depends(get_db)):
-    task = db.get(Task, task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
-
-@app.put("/tasks/{task_id}", response_model=schemas.TaskResponse)
-def update_task(task_id: int, task_update: schemas.TaskCreate, db: Session = Depends(get_db)):
-    db_task = db.get(Task, task_id)
+@app.patch("/api/tasks/{id}/complete", response_model=schemas.TaskResponse, tags=["task-controller"], summary="Mark task completed")
+def mark_completed(id: int, db: Session = Depends(get_db)):
+    logger.info(f"Request to mark task {id} as completed")
+    
+    db_task = db.get(Task, id)
     if not db_task:
+        logger.warning(f"Task {id} not found")
         raise HTTPException(status_code=404, detail="Task not found")
     
-    db_task.task = task_update.task
-    db_task.is_completed = task_update.is_completed
-    db_task.is_deactivated = task_update.is_deactivated
-    
+    db_task.is_completed = True
     db.commit()
     db.refresh(db_task)
+    
     return db_task
 
-@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task_id: int, db: Session = Depends(get_db)):
-    db_task = db.get(Task, task_id)
+
+@app.delete("/api/tasks/{id}", response_model=schemas.TaskResponse, tags=["task-controller"], summary="Deactivate task")
+def deactivate_task(id: int, db: Session = Depends(get_db)):
+    logger.info(f"Request to deactivate task {id}")
+    
+    db_task = db.get(Task, id)
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    db.delete(db_task)
+    db_task.is_deactivated = True
     db.commit()
-    return None
+    db.refresh(db_task) 
+    
+    return db_task
 
-@app.get("/health")
+
+@app.get("/health", tags=["health-controller"], summary="Application health check")
 def health():
+    logger.debug("Health check probe received")
     return {"status": "ok"}
 
-@app.get("/db-check")
+@app.get("/db-check", tags=["health-controller"], summary="Database Connection Check")
 def db_check(db: Session = Depends(get_db)):
     try:
         db.execute(select(1))
-        return {"db": 1}
+        return {"status": "ok", "db": "connected"}
     except Exception as e:
-        return {"db": 0, "error": str(e)}
+        logger.error(f"Database connection failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+            detail=f"Database connection failed: {str(e)}"
+        )

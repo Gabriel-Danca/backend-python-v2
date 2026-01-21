@@ -1,0 +1,211 @@
+openapi: 3.1.0
+info:
+  title: Python Backend
+  version: '1.0'
+paths:
+  /api/tasks:
+    get:
+      tags:
+      - task-controller
+      summary: List active tasks
+      operationId: get_active_tasks_api_tasks_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+                type: array
+                title: Response Get Active Tasks Api Tasks Get
+    post:
+      tags:
+      - task-controller
+      summary: Create task
+      operationId: create_task_api_tasks_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreateRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/tasks/{id}/complete:
+    patch:
+      tags:
+      - task-controller
+      summary: Mark task completed
+      operationId: mark_completed_api_tasks__id__complete_patch
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/tasks/{id}:
+    delete:
+      tags:
+      - task-controller
+      summary: Deactivate task
+      operationId: deactivate_task_api_tasks__id__delete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /health:
+    get:
+      tags:
+      - health-controller
+      summary: Application health check
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /db-check:
+    get:
+      tags:
+      - health-controller
+      summary: Database Connection Check
+      operationId: db_check_db_check_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    TaskCreateRequest:
+      properties:
+        task:
+          type: string
+          title: Task
+        is_completed:
+          type: boolean
+          title: Is Completed
+          default: false
+        is_deactivated:
+          type: boolean
+          title: Is Deactivated
+          default: false
+      type: object
+      required:
+      - task
+      title: TaskCreateRequest
+    TaskResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        task:
+          type: string
+          title: Task
+        is_completed:
+          type: boolean
+          title: Is Completed
+        is_deactivated:
+          type: boolean
+          title: Is Deactivated
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        completed:
+          type: boolean
+          title: Completed
+          readOnly: true
+        deactivated:
+          type: boolean
+          title: Deactivated
+          readOnly: true
+      type: object
+      required:
+      - id
+      - task
+      - is_completed
+      - is_deactivated
+      - created_at
+      - updated_at
+      - completed
+      - deactivated
+      title: TaskResponse
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

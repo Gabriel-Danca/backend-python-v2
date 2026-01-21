@@ -1,0 +1,17 @@
+.env
+.venv
+venv/
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov/
+tests/
+docs/
+openapi.json
+openapi.yaml
+*.log
