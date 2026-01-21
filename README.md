@@ -23,6 +23,16 @@ health check endpoint.
 - SQLAlchemy (ORM)
 - Alembic (Database Migrations)
 
+## The following commands were verified on a Linux system as of January 19, 2026
+
+Please note that tools and best practices evolve over time.
+
+If you encounter issues, refer to the official documentation
+for each tool to adapt to any changes.
+
+Poetry: <https://python-poetry.org/docs/>
+Alembic: <https://alembic.sqlalchemy.org/en/latest/>
+
 ## Development Workflow
 
 Follow these steps to develop locally while running infrastructure in Docker.
@@ -38,19 +48,39 @@ Start PostgreSQL using Docker Compose without running the backend container:
 
 ```bash
 docker compose up db -d
-
 ```
 
 #### 3. Install & Run App Locally
 
-Install dependencies and start the hot-reloading development server:
+Install dependencies and start the development server:
 
 ```bash
 poetry install
-poetry run uvicorn app.main:app --reload
 ```
 
-*The app will be available at <http://localhost:8000>*
+Initialize Alembic:
+
+```bash
+poetry run alembic upgrade head
+```
+
+To run the server, use the following:
+
+```bash
+poetry run uvicorn app.main:app 
+```
+
+The app will be available at <http://localhost:8000>
+
+Interactive API Docs: <http://localhost:8000/docs>
+
+## Running Tests
+
+To run the test suite using Pytest:
+
+```bash
+poetry run pytest
+```
 
 ## Run via Docker (Production Check)
 
